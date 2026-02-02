@@ -1,71 +1,140 @@
-#snake хранит двумерный массив, положение клеток змейки
-def severed_tail(snake, apple, direction, x_max, y_max):
-  x_apple, y_apple = apple
-  x_snake, y_snake = snake[0][0] + direction[0], snake[0][1] + direction[1]
-  x_snake = 0 if x_snake > x_max else x_max if x_snake < 0 else x_snake
-  y_snake = 0 if y_snake > y_max else y_max if y_snake < 0 else y_snake
-  if x_snake == x_apple and y_snake == y_apple:
-    (apple)
-  elif [x_snake, y_snake] in snake:
-    snake = []
-  else:
-    snake.pop()
-  snake.insert(0, [x_snake, y_snake])
-   
-from random import randint
+import pygame
+import random
+import time
 
-class Game:
-    #Инициализация
-    def init(self, canvas):
-        self.canvas = canvas
-        self.snake_coords = [[14, 14]]
-        self.apple_coords = [randint(0, 29) for i in range(2)]
-        self.vector = {"Up":(0,-1), "Down":(0, 1), "Left": (-1,0), "Right": (1, 0)}
-        self.direction = self.vector["Right"]
-        self.canvas.focus_set()
-        self.canvas.bind("<KeyPress>", self.set_direction)
-        self.GAME()
-    #Метод для нового положения "Яблока"
-    def set_apple(self):
-        self.apple_coords = [randint(0, 29) for i in range(2)]
-        #Условие, для того чтобы яблоко не лежало на змейке
-        if self.apple_coords in self.snake_coords:
-            self.set_apple()
-    #Установка нового направления змейки
-    def set_direction(self, event):
-      #Условие, которое проверяет нажатие кнопки
-        if event.keysym in self.vector:
-            self.direction = self.vector[event.keysym]
-    #Отрисовка игры
-    def draw(self):
-        self.canvas.delete(ALL)
-        x_apple, y_apple = self.apple_coords
-        self.canvas.create_rectangle(x_apple*10, y_apple*10, (x_apple+1)*10, (y_apple+1)*10, fill="red", width=0)
-        for x, y in self.snake_coords:
-            self.canvas.create_rectangle(x*10, y*10, (x+1)*10, (y+1)*10, fill="green", width=0)
-    #Метод, который возращает координаты на интервале [0, 29]
-    @staticmethod
-    def coord_check(coord):
-        return 0 if coord > 29 else 29 if coord < 0 else coord
-    #Алгоритм "Оторванный Хвост\Логика игры"       
-    def GAME(self):
-        self.draw()
-        x,y = self.snake_coords[0]
-        x += self.direction[0]; y += self.direction[1]
-        x = self.coord_check(x)
-        y = self.coord_check(y)
-        if x == self.apple_coords[0] and y == self.apple_coords[1]:
-            self.set_apple()
-        elif [x, y] in self.snake_coords:
-            self.snake_coords = []
+# Инициализация Pygame
+pygame.init()
+
+# Настройки экрана
+WIDTH, HEIGHT = 600, 600
+CELL_SIZE = 20
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Snake Game")
+clock = pygame.time.Clock()
+
+# Цвета
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+GRAY = (128, 128, 128)
+
+# Направления
+UP = (0, -1)
+DOWN = (0, 1)
+LEFT = (-1, 0)
+RIGHT = (1, 0)
+
+class Snake:
+    def __init__(self):
+        self.reset()
+        
+    def reset(self):
+        self.length = 1
+        self.positions = [(WIDTH // 2, HEIGHT // 2)]
+        self.direction = RIGHT
+        self.score = 0
+        
+    def get_head_position(self):
+        return self.positions[0]
+    
+    def turn(self, point):
+        if self.length > 1 and (point[0] * -1, point[1] * -1) == self.direction:
+            return  # Нельзя развернуться на 180 градусов
         else:
-            self.snake_coords.pop()
-        self.snake_coords.insert(0, [x,y])
-        self.canvas.after(100, self.GAME)
+            self.direction = point
+    
+    def move(self):
+        head = self.get_head_position()
+        x, y = self.direction
+        new_x = (head[0] + (x * CELL_SIZE)) % WIDTH
+        new_y = (head[1] + (y * CELL_SIZE)) % HEIGHT
+        new_position = (new_x, new_y)
         
+        if new_position in self.positions[1:]:
+            self.reset()
+            return False
+            
+        self.positions.insert(0, new_position)
+        if len(self.positions) > self.length:
+            self.positions.pop()
+        return True
+    
+    def draw(self, surface):
+        for i, p in enumerate(self.positions):
+            color = GREEN if i == 0 else GRAY
+            rect = pygame.Rect((p[0], p[1]), (CELL_SIZE, CELL_SIZE))
+            pygame.draw.rect(surface, color, rect)
+            pygame.draw.rect(surface, BLACK, rect, 1)
+    
+    def grow(self):
+        self.length += 1
+        self.score += 10
+
+class Food:
+    def __init__(self):
+        self.position = (0, 0)
+        self.randomize_position()
+    
+    def randomize_position(self):
+        x = random.randint(0, (WIDTH - CELL_SIZE) // CELL_SIZE) * CELL_SIZE
+        y = random.randint(0, (HEIGHT - CELL_SIZE) // CELL_SIZE) * CELL_SIZE
+        self.position = (x, y)
+    
+    def draw(self, surface):
+        rect = pygame.Rect((self.position[0], self.position[1]), (CELL_SIZE, CELL_SIZE))
+        pygame.draw.rect(surface, RED, rect)
+        pygame.draw.rect(surface, BLACK, rect, 1)
+
+def draw_score(surface, score):
+    font = pygame.font.SysFont('Arial', 24)
+    text = font.render(f'Score: {score}', True, WHITE)
+    surface.blit(text, (5, 5))
+
+def main():
+    snake = Snake()
+    food = Food()
+    
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    snake.turn(UP)
+                elif event.key == pygame.K_DOWN:
+                    snake.turn(DOWN)
+                elif event.key == pygame.K_LEFT:
+                    snake.turn(LEFT)
+                elif event.key == pygame.K_RIGHT:
+                    snake.turn(RIGHT)
         
-#Каркас игры
-root = Tk()
-canvas = Canvas(root, width=300, height=300, bg="black")
-canvas.pack()
-game = Game(canvas)
+        # Движение змейки
+        if not snake.move():
+            # Если змейка умерла, небольшая пауза
+            time.sleep(1)
+        
+        # Проверка поедания еды
+        if snake.get_head_position() == food.position:
+            snake.grow()
+            food.randomize_position()
+            # Проверяем, чтобы еда не появилась на змейке
+            while food.position in snake.positions:
+                food.randomize_position()
+        
+        # Отрисовка
+        screen.fill(BLACK)
+        snake.draw(screen)
+        food.draw(screen)
+        draw_score(screen, snake.score)
+        pygame.display.update()
+        
+        # Скорость игры (чем длиннее змейка, тем быстрее)
+        speed = 10 + min(snake.length // 5, 15)
+        clock.tick(speed)
+    
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
