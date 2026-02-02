@@ -2,6 +2,7 @@ import turtle
 import time
 import random
 import pygame
+
 pygame.init()
 
 # Настройки экрана
@@ -42,7 +43,7 @@ def move():
     if head.direction == "up": head.sety(head.ycor() + 20)
     if head.direction == "down": head.sety(head.ycor() - 20)
     if head.direction == "left": head.setx(head.xcor() - 20)
-    if head.direction == "right": head.setx(head.xaxis() + 20)
+    if head.direction == "right": head.setx(head.xcor() + 20)
 
 # Управление
 screen.listen()
